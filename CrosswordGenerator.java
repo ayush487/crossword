@@ -2,6 +2,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,11 +15,6 @@ public class CrosswordGenerator {
 
     public static void main(String[] args) {
         String[] words = args[0].split(",");
-        // String[] w = {"fig", "fight", "fit", "flight", "gift", "hit", "lift", "light", "lit"};
-        // String[] words = {"ads", "arm", "arms", "dam", "drama", "mad", "mars", "ram", "sad"};
-        // List<String> wl = Arrays.asList(w);
-        // Collections.shuffle(wl);
-        // String words[] = wl.toArray(new String[0]);
         wordsSet = Set.of(words);
         Arrays.sort(words, (w1, w2) -> w2.length() - w1.length());
         wordsUsed = new ArrayList<>(words.length);
@@ -26,12 +22,15 @@ public class CrosswordGenerator {
         for (String s : words) {
             totalLength += s.length();
         }
-        int[] a = getHB(totalLength, 2f);
+        int[] a = getHB(totalLength, 2f, words[0].length());
         char[][] crossword = getEmptyGrid(a[0], a[1]);
         String firstWord = words[0];
         System.out.println(firstWord);
         addAtRandomPosition(crossword, a[0], a[1], firstWord);
-        boolean isCrosswordCreated = createCrossword(words, 1, crossword, a[0], a[1]);
+        Random random = new Random(33);
+
+        boolean isCrosswordCreated = createCrossword(words, 1, crossword, a[0], a[1], random.nextBoolean());
+
         if (isCrosswordCreated) {
             System.out.println("Crossword created!");
         } else {
@@ -45,89 +44,83 @@ public class CrosswordGenerator {
             }
             System.out.print(":");
         }
+
     }
 
-    static boolean createCrossword(String[] words, int wordIndex, char[][] grid, int height, int width) {
+    static boolean createCrossword(String[] words, int wordIndex, char[][] grid, int height, int width, boolean isAcross) {
         if (wordIndex >= words.length) {
             return true;
         }
 
-        for (int i = 1; i < words.length; i++) {
-            boolean isWordAdded = populateGrid(words[i], grid, height, width, i % 2 == 0);
-            if (!isWordAdded) {
-                System.out.println(words[i] + " not added!");
-                return false;
-            } else {
-                System.out.println(words[i] + " added!");
-            }
-        }
-        return true;
-    }
-
-    static boolean populateGrid(String word, char[][] grid, int height, int width, boolean isAcross) {
-        List<CharData> gridInfo = getGridInfo(grid, height, width);
-        wordsUsed.add(word);
+        String word = words[wordIndex];
         Pattern wordPattern = Pattern.compile(String.format("(?<![a-zA-Z+])%s(?![a-zA-Z+])", word));
         if (isAcross) {
-            // first attempt filling across, if fail we will try down
-            int jLimit = width - word.length();
+            // fill across
             for (int i = 0; i < height; i++) {
-                for (int j = 0; j <= jLimit; j++) {
-                    char[][] tempGrid2 = getCopy(grid);
-                    populateWordInGridAcross(tempGrid2, word, i, j);
-                    if (checkIfGridStillCorrect(tempGrid2, gridInfo)
-                            && checkIfWordFitWell(tempGrid2, wordPattern, true, i)
-                            && checkIfOtherWordsAlsoFine(tempGrid2)) {
-                        copyGrid(grid, tempGrid2);
+                for (int j = 0; j <= width - word.length(); j++) {
+                    List<CharData> charData = getGridInfo(grid, height, width);
+                    populateWordInGridAcross(grid, word, i, j);
+                    if (checkIfGridStillCorrect(grid, charData)
+                            && checkIfWordFitWell(grid, wordPattern, true, i)
+                            && checkIfOtherWordsAlsoFine(grid)
+                            && createCrossword(words, wordIndex + 1, grid, height, width, false)) {
                         return true;
+                    } else {
+                        setDataInGridFromCharData(grid, charData);
                     }
                 }
             }
-            int iLimit = height - word.length();
-            for (int i = 0; i <= iLimit; i++) {
+
+            // fill down
+            for (int i = 0; i <= height - word.length(); i++) {
                 for (int j = 0; j < width; j++) {
-                    char[][] tempGrid2 = getCopy(grid);
-                    populateWordInGridDown(tempGrid2, word, i, j);
-                    if (checkIfGridStillCorrect(tempGrid2, gridInfo)
-                            && checkIfWordFitWell(tempGrid2, wordPattern, false, i)
-                            && checkIfOtherWordsAlsoFine(tempGrid2)) {
-                        copyGrid(grid, tempGrid2);
-                        wordsUsed.add(word);
+                    List<CharData> charData = getGridInfo(grid, height, width);
+                    populateWordInGridDown(grid, word, i, j);
+                    if (checkIfGridStillCorrect(grid, charData)
+                            && checkIfWordFitWell(grid, wordPattern, false, j)
+                            && checkIfOtherWordsAlsoFine(grid)
+                            && createCrossword(words, wordIndex + 1, grid, height, width, true)) {
                         return true;
+                    } else {
+                        setDataInGridFromCharData(grid, charData);
                     }
                 }
             }
         } else {
-            // first attempt filling down, if fail we will try across
-            int iLimit = height - word.length();
-            for (int i = 0; i <= iLimit; i++) {
+
+            // fill down
+            for (int i = 0; i <= height - word.length(); i++) {
                 for (int j = 0; j < width; j++) {
-                    char[][] tempGrid2 = getCopy(grid);
-                    populateWordInGridDown(tempGrid2, word, i, j);
-                    if (checkIfGridStillCorrect(tempGrid2, gridInfo)
-                            && checkIfWordFitWell(tempGrid2, wordPattern, false, i)
-                            && checkIfOtherWordsAlsoFine(tempGrid2)) {
-                        copyGrid(grid, tempGrid2);
-                        wordsUsed.add(word);
+                    List<CharData> charData = getGridInfo(grid, height, width);
+                    populateWordInGridDown(grid, word, i, j);
+                    if (checkIfGridStillCorrect(grid, charData)
+                            && checkIfWordFitWell(grid, wordPattern, false, j)
+                            && checkIfOtherWordsAlsoFine(grid)
+                            && createCrossword(words, wordIndex + 1, grid, height, width, true)) {
                         return true;
+                    } else {
+                        setDataInGridFromCharData(grid, charData);
                     }
                 }
             }
-            int jLimit = width - word.length();
+
+            // fill across
             for (int i = 0; i < height; i++) {
-                for (int j = 0; j <= jLimit; j++) {
-                    char[][] tempGrid2 = getCopy(grid);
-                    populateWordInGridAcross(tempGrid2, word, i, j);
-                    if (checkIfGridStillCorrect(tempGrid2, gridInfo)
-                            && checkIfWordFitWell(tempGrid2, wordPattern, true, i)
-                            && checkIfOtherWordsAlsoFine(tempGrid2)) {
-                        copyGrid(grid, tempGrid2);
-                        wordsUsed.add(word);
+                for (int j = 0; j <= width - word.length(); j++) {
+                    List<CharData> charData = getGridInfo(grid, height, width);
+                    populateWordInGridAcross(grid, word, i, j);
+                    if (checkIfGridStillCorrect(grid, charData)
+                            && checkIfWordFitWell(grid, wordPattern, true, i)
+                            && checkIfOtherWordsAlsoFine(grid)
+                            && createCrossword(words, wordIndex + 1, grid, height, width, false)) {
                         return true;
+                    } else {
+                        setDataInGridFromCharData(grid, charData);
                     }
                 }
             }
         }
+
         return false;
     }
 
@@ -261,33 +254,23 @@ public class CrosswordGenerator {
         return list;
     }
 
-    private static void copyGrid(char[][] grid, char[][] tempGrid) {
-        int h = grid.length;
-        int w = grid[0].length;
-        for (int i = 0; i < h; i++) {
-            System.arraycopy(tempGrid[i], 0, grid[i], 0, w);
-            // for (int j = 0; j < w; j++) {
-            //     grid[i][j] = tempGrid[i][j];
-            // }
+    private static void setDataInGridFromCharData(char[][] grid, List<CharData> charDatas) {
+        for (char[] cArr : grid) {
+            for (int i = 0; i < cArr.length; i++) {
+                cArr[i] = '-';
+            }
+        }
+        for (CharData cd : charDatas) {
+            grid[cd.y()][cd.x()] = cd.character();
         }
     }
 
-    private static char[][] getCopy(char[][] grid) {
-        int h = grid.length;
-        int w = grid[0].length;
-        char[][] copyGrid = new char[h][w];
-        for (int i = 0; i < h; i++) {
-            System.arraycopy(grid[i], 0, copyGrid[i], 0, w);
-            // for (int j = 0; j < w; j++) {
-            //     grid[i][j] = tempGrid[i][j];
-            // }
-        }
-        return copyGrid;
-    }
-
-    private static int[] getHB(int totalLength, float multiplier) {
+    private static int[] getHB(int totalLength, float multiplier, int minSide) {
         totalLength *= multiplier;
         int sqrt = (int) Math.sqrt(totalLength);
+        if (sqrt < minSide) {
+            return new int[]{minSide, minSide};
+        }
         if (sqrt * (sqrt + 1) >= totalLength) {
             int[] r = new int[]{sqrt, sqrt + 1};
             if (Math.random() > 0.5) {
@@ -295,31 +278,11 @@ public class CrosswordGenerator {
                 r[0] = r[1];
                 r[1] = temp;
             }
+
             return r;
         } else {
             return new int[]{sqrt + 1, sqrt + 1};
         }
-    }
-
-    private static void printGrid(char[][] grid) {
-        int y = grid.length;
-        int x = grid[0].length;
-        for (int i = 0; i < y; i++) {
-            for (int j = 0; j < x; j++) {
-                System.out.print(grid[i][j]);
-            }
-            System.out.println();
-        }
-    }
-
-    private static char[][] getEmptyGrid(int h, int w) {
-        char[][] grid = new char[h][w];
-        for (int i = 0; i < h; i++) {
-            for (int j = 0; j < w; j++) {
-                grid[i][j] = '-';
-            }
-        }
-        return grid;
     }
 
     private static void addAtRandomPosition(char[][] chars, int height, int width, String word) {
@@ -340,6 +303,27 @@ public class CrosswordGenerator {
             for (int j = 0; j < word.length(); j++) {
                 chars[posY][posX + j] = word.charAt(j);
             }
+        }
+    }
+
+    private static char[][] getEmptyGrid(int h, int w) {
+        char[][] grid = new char[h][w];
+        for (int i = 0; i < h; i++) {
+            for (int j = 0; j < w; j++) {
+                grid[i][j] = '-';
+            }
+        }
+        return grid;
+    }
+
+    private static void printGrid(char[][] grid) {
+        int y = grid.length;
+        int x = grid[0].length;
+        for (int i = 0; i < y; i++) {
+            for (int j = 0; j < x; j++) {
+                System.out.print(grid[i][j]);
+            }
+            System.out.println();
         }
     }
 }
