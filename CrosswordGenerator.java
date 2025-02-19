@@ -1,6 +1,7 @@
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -18,32 +19,43 @@ public class CrosswordGenerator {
         wordsSet = Set.of(words);
         Arrays.sort(words, (w1, w2) -> w2.length() - w1.length());
         wordsUsed = new ArrayList<>(words.length);
-        int totalLength = 0;
-        for (String s : words) {
-            totalLength += s.length();
-        }
-        int[] a = getHB(totalLength, 2f, words[0].length());
-        char[][] crossword = getEmptyGrid(a[0], a[1]);
-        String firstWord = words[0];
-        System.out.println(firstWord);
-        addAtRandomPosition(crossword, a[0], a[1], firstWord);
         Random random = new Random(33);
-
-        boolean isCrosswordCreated = createCrossword(words, 1, crossword, a[0], a[1], random.nextBoolean());
-
-        if (isCrosswordCreated) {
-            System.out.println("Crossword created!");
+        int gridHeight;
+        int gridWidth;
+        if (random.nextBoolean()) {
+            gridHeight = words[0].length();
+            gridWidth = words[1].length();
         } else {
-            System.out.println("Crossword fail!");
+            gridHeight = words[1].length();
+            gridWidth = words[0].length();
         }
+        char[][] crossword;
+        boolean incrementHeight = true;
+        boolean isCrosswordCreated = false;
+        crossword = getEmptyGrid(gridHeight, gridWidth);
+
+        List<String> l = Arrays.asList(words);
+        Collections.shuffle(l);
+        words = l.toArray(String[]::new);
+
+        while (!isCrosswordCreated) {
+            isCrosswordCreated = createCrossword(words, 0, crossword, gridHeight, gridWidth, random.nextBoolean());
+            if (!isCrosswordCreated) {
+                wordsUsed = new ArrayList<>(words.length);
+                if (incrementHeight) {
+                    gridHeight++;
+                } else {
+                    gridWidth++;
+                }
+                crossword = getEmptyGrid(gridHeight, gridWidth);
+                incrementHeight = !incrementHeight;
+            }
+        }
+
+        System.out.println("Crossword created! Height : " + gridHeight + " Width : " + gridWidth);
         printGrid(crossword);
         System.out.println("\nCopy from here");
-        for (char[] c : crossword) {
-            for (char cc : c) {
-                System.out.print(cc);
-            }
-            System.out.print(":");
-        }
+        printCrosswordHorizontal(crossword);
 
     }
 
@@ -54,6 +66,7 @@ public class CrosswordGenerator {
 
         String word = words[wordIndex];
         Pattern wordPattern = Pattern.compile(String.format("(?<![a-zA-Z+])%s(?![a-zA-Z+])", word));
+        wordsUsed.add(word);
         if (isAcross) {
             // fill across
             for (int i = 0; i < height; i++) {
@@ -67,6 +80,7 @@ public class CrosswordGenerator {
                         return true;
                     } else {
                         setDataInGridFromCharData(grid, charData);
+                        wordsUsed.remove(word);
                     }
                 }
             }
@@ -265,47 +279,6 @@ public class CrosswordGenerator {
         }
     }
 
-    private static int[] getHB(int totalLength, float multiplier, int minSide) {
-        totalLength *= multiplier;
-        int sqrt = (int) Math.sqrt(totalLength);
-        if (sqrt < minSide) {
-            return new int[]{minSide, minSide};
-        }
-        if (sqrt * (sqrt + 1) >= totalLength) {
-            int[] r = new int[]{sqrt, sqrt + 1};
-            if (Math.random() > 0.5) {
-                int temp = r[0];
-                r[0] = r[1];
-                r[1] = temp;
-            }
-
-            return r;
-        } else {
-            return new int[]{sqrt + 1, sqrt + 1};
-        }
-    }
-
-    private static void addAtRandomPosition(char[][] chars, int height, int width, String word) {
-        boolean isDown = Math.random() >= 0.5;
-        if (isDown) {
-            System.out.println("Populating Down");
-            int upperBound = height - word.length();
-            int posY = (int) (Math.random() * upperBound);
-            int posX = (int) (Math.random() * width);
-            for (int i = 0; i < word.length(); i++) {
-                chars[posY + i][posX] = word.charAt(i);
-            }
-        } else {
-            System.out.println("Populating Across");
-            int upperBound = width - word.length();
-            int posX = (int) (Math.random() * upperBound);
-            int posY = (int) (Math.random() * height);
-            for (int j = 0; j < word.length(); j++) {
-                chars[posY][posX + j] = word.charAt(j);
-            }
-        }
-    }
-
     private static char[][] getEmptyGrid(int h, int w) {
         char[][] grid = new char[h][w];
         for (int i = 0; i < h; i++) {
@@ -324,6 +297,19 @@ public class CrosswordGenerator {
                 System.out.print(grid[i][j]);
             }
             System.out.println();
+        }
+    }
+
+    private static void printCrosswordHorizontal(char[][] crossword) {
+        System.out.println("\n");
+        int height = crossword.length;
+        for (int i=0;i<height;i++) {
+            for (char c : crossword[i]) {
+                System.out.print(c);
+            }
+            if(i!=height-1) {
+                System.out.print(":");
+            }
         }
     }
 }
