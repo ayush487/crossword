@@ -34,21 +34,27 @@ public class CrosswordGenerator {
         boolean isCrosswordCreated = false;
         crossword = getEmptyGrid(gridHeight, gridWidth);
 
-        List<String> l = Arrays.asList(words);
-        Collections.shuffle(l);
-        words = l.toArray(String[]::new);
-
         while (!isCrosswordCreated) {
-            isCrosswordCreated = createCrossword(words, 0, crossword, gridHeight, gridWidth, random.nextBoolean());
+            for (int i = 1; i <= words.length; i++) {
+                List<String> l = Arrays.asList(words);
+                Collections.shuffle(l);
+                words = l.toArray(String[]::new);
+                isCrosswordCreated = createCrossword(words, 0, crossword, gridHeight, gridWidth, random.nextBoolean());
+                if (!isCrosswordCreated) {
+                    System.out.println("Failed Height : " + gridHeight + ", Width : " + gridWidth + " Try : " + i);
+                    wordsUsed = new ArrayList<>(words.length);
+                    crossword = getEmptyGrid(gridHeight, gridWidth);
+                    incrementHeight = !incrementHeight;
+                } else {
+                    break;
+                }
+            }
             if (!isCrosswordCreated) {
-                wordsUsed = new ArrayList<>(words.length);
                 if (incrementHeight) {
                     gridHeight++;
                 } else {
                     gridWidth++;
                 }
-                crossword = getEmptyGrid(gridHeight, gridWidth);
-                incrementHeight = !incrementHeight;
             }
         }
 
@@ -67,6 +73,8 @@ public class CrosswordGenerator {
         String word = words[wordIndex];
         Pattern wordPattern = Pattern.compile(String.format("(?<![a-zA-Z+])%s(?![a-zA-Z+])", word));
         wordsUsed.add(word);
+        height = grid.length;
+        width = grid[0].length;
         if (isAcross) {
             // fill across
             for (int i = 0; i < height; i++) {
@@ -258,6 +266,8 @@ public class CrosswordGenerator {
 
     private static List<CharData> getGridInfo(char[][] grid, int h, int w) {
         List<CharData> list = new ArrayList<>();
+        h = grid.length;
+        w = grid[0].length;
         for (int i = 0; i < h; i++) {
             for (int j = 0; j < w; j++) {
                 if (grid[i][j] != '-') {
@@ -303,11 +313,11 @@ public class CrosswordGenerator {
     private static void printCrosswordHorizontal(char[][] crossword) {
         System.out.println("\n");
         int height = crossword.length;
-        for (int i=0;i<height;i++) {
+        for (int i = 0; i < height; i++) {
             for (char c : crossword[i]) {
                 System.out.print(c);
             }
-            if(i!=height-1) {
+            if (i != height - 1) {
                 System.out.print(":");
             }
         }
