@@ -1,7 +1,6 @@
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -13,6 +12,7 @@ public class CrosswordGenerator {
     private static List<String> wordsUsed;
     private static Set<String> wordsSet;
     private static final Pattern EXTRA_UNWANTED_TEXT_PATTERN = Pattern.compile("[a-z]{2,}");
+    private static int LONGEST_WORD_SIZE;
 
     public static void main(String[] args) {
         String[] words = args[0].split(",");
@@ -20,13 +20,14 @@ public class CrosswordGenerator {
         Arrays.sort(words, (w1, w2) -> w2.length() - w1.length());
         wordsUsed = new ArrayList<>(words.length);
         Random random = new Random(33);
+        LONGEST_WORD_SIZE = words[0].length();
         int gridHeight;
         int gridWidth;
         if (random.nextBoolean()) {
             gridHeight = words[0].length();
-            gridWidth = words[1].length();
+            gridWidth = words[0].length();
         } else {
-            gridHeight = words[1].length();
+            gridHeight = words[0].length();
             gridWidth = words[0].length();
         }
         char[][] crossword;
@@ -35,26 +36,48 @@ public class CrosswordGenerator {
         crossword = getEmptyGrid(gridHeight, gridWidth);
 
         while (!isCrosswordCreated) {
-            for (int i = 1; i <= words.length; i++) {
-                List<String> l = Arrays.asList(words);
-                Collections.shuffle(l);
-                words = l.toArray(String[]::new);
-                isCrosswordCreated = createCrossword(words, 0, crossword, gridHeight, gridWidth, random.nextBoolean());
-                if (!isCrosswordCreated) {
-                    System.out.println("Failed Height : " + gridHeight + ", Width : " + gridWidth + " Try : " + i);
-                    wordsUsed = new ArrayList<>(words.length);
-                    crossword = getEmptyGrid(gridHeight, gridWidth);
-                    incrementHeight = !incrementHeight;
-                } else {
+            for (int i = 0; i < gridHeight; i++) {
+                for (int j = 0; j < gridWidth - words[0].length(); j++) {
+                    populateWordInGridAcross(crossword, words[0], i, j);
+                    isCrosswordCreated = createCrossword(words, 1, crossword, gridHeight, gridWidth, true);
+                    if (isCrosswordCreated) {
+                        break;
+                    } else {
+                        wordsUsed = new ArrayList<>(words.length);
+                        crossword = getEmptyGrid(gridHeight, gridWidth);
+                    }
+                }
+                if (isCrosswordCreated) {
                     break;
                 }
             }
             if (!isCrosswordCreated) {
+                for (int i = 0; i < gridHeight - words[0].length(); i++) {
+                    for (int j = 0; j < gridWidth; j++) {
+                        populateWordInGridDown(crossword, words[0], i, j);
+                        isCrosswordCreated = createCrossword(words, 1, crossword, gridHeight, gridWidth, false);
+                        if (isCrosswordCreated) {
+                            break;
+                        } else {
+                            wordsUsed = new ArrayList<>(words.length);
+                            crossword = getEmptyGrid(gridHeight, gridWidth);
+                        }
+                    }
+                    if (isCrosswordCreated) {
+                        break;
+                    }
+                }
+            }
+            if (!isCrosswordCreated) {
+                System.out.println("Failed Height : " + gridHeight + ", Width : " + gridWidth);
                 if (incrementHeight) {
                     gridHeight++;
                 } else {
                     gridWidth++;
                 }
+                incrementHeight = !incrementHeight;
+            } else {
+                break;
             }
         }
 
@@ -84,6 +107,7 @@ public class CrosswordGenerator {
                     if (checkIfGridStillCorrect(grid, charData)
                             && checkIfWordFitWell(grid, wordPattern, true, i)
                             && checkIfOtherWordsAlsoFine(grid)
+                            && checkIfIntersecting(grid, word, j, i, true)
                             && createCrossword(words, wordIndex + 1, grid, height, width, false)) {
                         return true;
                     } else {
@@ -101,6 +125,7 @@ public class CrosswordGenerator {
                     if (checkIfGridStillCorrect(grid, charData)
                             && checkIfWordFitWell(grid, wordPattern, false, j)
                             && checkIfOtherWordsAlsoFine(grid)
+                            && checkIfIntersecting(grid, word, j, i, false)
                             && createCrossword(words, wordIndex + 1, grid, height, width, true)) {
                         return true;
                     } else {
@@ -118,6 +143,7 @@ public class CrosswordGenerator {
                     if (checkIfGridStillCorrect(grid, charData)
                             && checkIfWordFitWell(grid, wordPattern, false, j)
                             && checkIfOtherWordsAlsoFine(grid)
+                            && checkIfIntersecting(grid, word, j, i, false)
                             && createCrossword(words, wordIndex + 1, grid, height, width, true)) {
                         return true;
                     } else {
@@ -134,6 +160,7 @@ public class CrosswordGenerator {
                     if (checkIfGridStillCorrect(grid, charData)
                             && checkIfWordFitWell(grid, wordPattern, true, i)
                             && checkIfOtherWordsAlsoFine(grid)
+                            && checkIfIntersecting(grid, word, j, i, true)
                             && createCrossword(words, wordIndex + 1, grid, height, width, false)) {
                         return true;
                     } else {
@@ -142,7 +169,49 @@ public class CrosswordGenerator {
                 }
             }
         }
+        return false;
+    }
 
+    private static boolean checkIfIntersecting(char[][] grid, String word, int startX, int startY, boolean isAcross) {
+        if (word.length() >= LONGEST_WORD_SIZE) {
+            return true;
+        }
+        int gridHeight = grid.length;
+        int gridWidth = grid[0].length;
+        if (isAcross) {
+            if (startY == 0) {
+                return hasAnyLetterOnRangeAcross(grid, 1, startX, startX + word.length() - 1);
+            } else if (startY == gridHeight - 1) {
+                return hasAnyLetterOnRangeAcross(grid, startY - 1, startX, startX + word.length() - 1);
+            } else {
+                return hasAnyLetterOnRangeAcross(grid, startY + 1, startX, startX + word.length() - 1) || hasAnyLetterOnRangeAcross(grid, startY - 1, startX, startX + word.length() - 1);
+            }
+        } else {
+            if (startX == 0) {
+                return hasAnyLetterOnRangeDown(grid, 1, startY, startY + word.length() - 1);
+            } else if (startX == gridWidth - 1) {
+                return hasAnyLetterOnRangeDown(grid, startX - 1, startY, startY + word.length() - 1);
+            } else {
+                return hasAnyLetterOnRangeDown(grid, startX + 1, startY, startY + word.length() - 1) || hasAnyLetterOnRangeDown(grid, startX - 1, startY, startY + word.length() - 1);
+            }
+        }
+    }
+
+    private static boolean hasAnyLetterOnRangeAcross(char[][] grid, int y, int xStart, int xEnd) {
+        for (int i = xStart; i <= xEnd; i++) {
+            if (grid[y][i] != '-') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasAnyLetterOnRangeDown(char[][] grid, int x, int yStart, int yEnd) {
+        for (int i = yStart; i <= yEnd; i++) {
+            if (grid[i][x] != '-') {
+                return true;
+            }
+        }
         return false;
     }
 
