@@ -112,7 +112,6 @@ public class CrosswordGenerator {
                         return true;
                     } else {
                         setDataInGridFromCharData(grid, charData);
-                        wordsUsed.remove(word);
                     }
                 }
             }
@@ -169,6 +168,7 @@ public class CrosswordGenerator {
                 }
             }
         }
+        wordsUsed.remove(word);
         return false;
     }
 
