@@ -1,6 +1,7 @@
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -16,10 +17,10 @@ public class CrosswordGenerator {
 
     public static void main(String[] args) {
         String[] words = args[0].split(",");
-        wordsSet = Set.of(words);
-        Arrays.sort(words, (w1, w2) -> w2.length() - w1.length());
-        wordsUsed = new ArrayList<>(words.length);
         Random random = new Random(33);
+        wordsSet = Set.of(words);
+        words = shuffleAndSort(words);
+        wordsUsed = new ArrayList<>(words.length);
         LONGEST_WORD_SIZE = words[0].length();
         int gridHeight;
         int gridWidth;
@@ -34,7 +35,6 @@ public class CrosswordGenerator {
         boolean incrementHeight = true;
         boolean isCrosswordCreated = false;
         crossword = getEmptyGrid(gridHeight, gridWidth);
-
         while (!isCrosswordCreated) {
             for (int i = 0; i < gridHeight; i++) {
                 for (int j = 0; j < gridWidth - words[0].length(); j++) {
@@ -88,7 +88,15 @@ public class CrosswordGenerator {
 
     }
 
-    static boolean createCrossword(String[] words, int wordIndex, char[][] grid, int height, int width, boolean isAcross) {
+    private static String[] shuffleAndSort(String[] arr) {
+        List<String> list = new ArrayList<>(Arrays.asList(arr));
+        Collections.shuffle(list);
+        list.sort((w1, w2) -> w2.length() - w1.length());
+        return list.toArray(new String[0]);
+    }
+
+    static boolean createCrossword(String[] words, int wordIndex, char[][] grid, int height, int width,
+            boolean isAcross) {
         if (wordIndex >= words.length) {
             return true;
         }
@@ -184,7 +192,8 @@ public class CrosswordGenerator {
             } else if (startY == gridHeight - 1) {
                 return hasAnyLetterOnRangeAcross(grid, startY - 1, startX, startX + word.length() - 1);
             } else {
-                return hasAnyLetterOnRangeAcross(grid, startY + 1, startX, startX + word.length() - 1) || hasAnyLetterOnRangeAcross(grid, startY - 1, startX, startX + word.length() - 1);
+                return hasAnyLetterOnRangeAcross(grid, startY + 1, startX, startX + word.length() - 1)
+                        || hasAnyLetterOnRangeAcross(grid, startY - 1, startX, startX + word.length() - 1);
             }
         } else {
             if (startX == 0) {
@@ -192,7 +201,8 @@ public class CrosswordGenerator {
             } else if (startX == gridWidth - 1) {
                 return hasAnyLetterOnRangeDown(grid, startX - 1, startY, startY + word.length() - 1);
             } else {
-                return hasAnyLetterOnRangeDown(grid, startX + 1, startY, startY + word.length() - 1) || hasAnyLetterOnRangeDown(grid, startX - 1, startY, startY + word.length() - 1);
+                return hasAnyLetterOnRangeDown(grid, startX + 1, startY, startY + word.length() - 1)
+                        || hasAnyLetterOnRangeDown(grid, startX - 1, startY, startY + word.length() - 1);
             }
         }
     }
